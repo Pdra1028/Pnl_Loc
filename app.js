@@ -17,12 +17,14 @@ const sidebar = $("sidebar");
 const btnResultsToggle = $("btnResultsToggle");
 const resultsCount = $("resultsCount");
 const btnMoreResults = $("btnMoreResults");
+const btnExport = $("btnExport");
 
 let currentFloor = null;
 let currentScale = 1.6;
 let pickMode = false;
 let resultsExpanded = false;   // 모바일에서 더보기 상태
 let resultsHidden = false;     // 결과 영역 접기/펼치기 상태
+let pickedPanels = []; // 좌표 찍어서 임시로 쌓는 목록
 let imgNaturalW = 0;
 let imgNaturalH = 0;
 
@@ -128,6 +130,10 @@ function renderResults(list) {
     note.textContent = `모바일에서는 상위 ${mobileLimit}개만 표시 중입니다.`;
     results.appendChild(note);
   }
+    // UX: 검색 결과가 정확히 1개면 자동 이동(모바일에서 특히 편함)
+  if (list.length === 1) {
+    goToPanel(list[0]);
+  }
 }
 
 
@@ -222,6 +228,27 @@ if (btnResultsToggle) {
     btnResultsToggle.textContent = resultsHidden ? "결과 펼치기" : "결과 접기";
     // 접었다 펼칠 때 미니맵 영역/스크롤 사각형 갱신
     setTimeout(updateMinimapRect, 50);
+	if (btnExport) {
+  btnExport.onclick = () => {
+    if (!pickedPanels.length) {
+      showToast("내보낼 데이터가 없습니다. 좌표찍기 ON 후 도면을 탭해 추가하세요.", 1800);
+      return;
+    }
+    const json = JSON.stringify(pickedPanels, null, 2);
+
+    // 클립보드 복사 시도
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(json).then(() => {
+        showToast(`복사 완료 (${pickedPanels.length}개) - panels.js에 붙여넣으세요`, 2200);
+      }).catch(() => {
+        alert(json);
+      });
+    } else {
+      alert(json);
+    }
+  };
+}
+
   };
 }
 
@@ -235,6 +262,13 @@ floorImg.addEventListener("click", (ev) => {
 
   const msg = `좌표: floor=${currentFloor}, x=${nx.toFixed(4)}, y=${ny.toFixed(4)}`;
   showToast(msg, 2200);
+  // 좌표찍기 ON일 때: 판넬명 입력받아 임시 목록에 추가
+  const name = prompt("판넬명을 입력하세요 (예: 12번판넬, A-12):");
+  if (name && name.trim()) {
+    const item = { name: name.trim(), floor: currentFloor, x: Number(nx.toFixed(4)), y: Number(ny.toFixed(4)) };
+    pickedPanels.push(item);
+    showToast(`추가됨: ${item.name} @ ${item.floor}`, 1800);
+  }
 
   if (navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(msg).catch(() => {});
