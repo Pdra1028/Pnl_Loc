@@ -9,9 +9,10 @@
 <body>
   <header class="topbar">
     <div class="row">
-      <select id="floorSelect" title="층 선택"></select>
-      <button id="btnMinimap" class="btn">미니맵</button>
-      <button id="btnPick" class="btn">좌표찍기: OFF</button>
+  <select id="floorSelect" title="층 선택"></select>
+  <button id="btnMinimap" class="btn">미니맵</button>
+  <button id="btnPick" class="btn">좌표찍기: OFF</button>
+  <button id="btnResultsToggle" class="btn">결과 접기</button>
     </div>
 
     <input id="search" type="search" placeholder="판넬명 검색 (예: 1번판넬)" autocomplete="off" />
@@ -19,9 +20,17 @@
   </header>
 
   <main class="main">
-    <aside class="sidebar">
-      <div class="title">검색 결과</div>
-      <div id="results" class="results"></div>
+    <aside class="sidebar" id="sidebar">
+		<div class="sidebarHeader">
+				<div class="title">검색 결과</div>
+				<div id="resultsCount" class="count"></div>
+		</div>
+
+		<div id="results" class="results"></div>
+
+		<div class="resultsFooter">
+			<button id="btnMoreResults" class="btn small hidden">더 보기</button>
+		</div>
     </aside>
 
     <section class="viewer">

@@ -16,6 +16,30 @@ body { background: #0b0d10; color: #eaeef6; }
   border: 1px solid rgba(255,255,255,0.12);
   background:#121722; color:#eaeef6;
 }
+/* 결과 헤더(제목 + 총개수) */
+.sidebarHeader{
+  display:flex;
+  justify-content: space-between;
+  align-items:center;
+  gap: 10px;
+  margin-bottom: 8px;
+}
+.count{
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* 작은 버튼(더 보기/접기) */
+.btn.small{
+  padding: 8px 10px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+.resultsFooter{
+  margin-top: 10px;
+  display: flex;
+  justify-content: flex-end;
+}
 #search{
   width: 100%;
   margin-top: 10px;
@@ -98,29 +122,40 @@ body { background: #0b0d10; color: #eaeef6; }
   text-overflow: ellipsis;
 }
 @media (max-width: 900px) {
-  /* 모바일에서는 결과 목록을 숨기지 말고 위/아래로 쌓이게 */
+  :root { --resultsH: 28vh; }  /* 결과 영역 기본 높이 */
+
   .main {
     grid-template-columns: 1fr;
-    grid-template-rows: 25vh 1fr;  /* 위: 결과, 아래: 도면 */
+    grid-template-rows: var(--resultsH) 1fr; /* 위: 결과, 아래: 도면 */
     height: calc(100vh - 0px);
   }
 
-  .sidebar {
-    display: block;               /* ★ 숨기지 않음 */
+  .sidebar{
+    display: block;
     border-right: none;
     border-bottom: 1px solid rgba(255,255,255,0.08);
-    max-height: 25vh;
+    max-height: var(--resultsH);
     overflow: auto;
   }
 
-  .viewer {
+  .viewer{
     position: relative;
-    height: 75vh;
+    height: calc(100vh - var(--resultsH));
   }
 
-  .viewport {
+  .viewport{
     position: absolute;
     inset: 0;
   }
-}
 
+  /* ★ '결과 접기' 상태: 결과 영역 자체를 숨겨 도면을 크게 */
+  body.resultsHidden .main{
+    grid-template-rows: 0px 1fr;
+  }
+  body.resultsHidden .sidebar{
+    display: none;
+  }
+  body.resultsHidden .viewer{
+    height: 100vh;
+  }
+}

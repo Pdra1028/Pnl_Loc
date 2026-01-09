@@ -13,10 +13,16 @@ const minimapRect = $("minimapRect");
 const toast = $("toast");
 const btnMinimap = $("btnMinimap");
 const btnPick = $("btnPick");
+const sidebar = $("sidebar");
+const btnResultsToggle = $("btnResultsToggle");
+const resultsCount = $("resultsCount");
+const btnMoreResults = $("btnMoreResults");
 
 let currentFloor = null;
 let currentScale = 1.6;
 let pickMode = false;
+let resultsExpanded = false;   // 모바일에서 더보기 상태
+let resultsHidden = false;     // 결과 영역 접기/펼치기 상태
 let imgNaturalW = 0;
 let imgNaturalH = 0;
 
@@ -65,6 +71,10 @@ function escapeHtml(s) {
   }[c]));
 }
 
+function isMobile() {
+  return window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
+}
+
 function filterPanels(q) {
   const query = q.trim().toLowerCase();
   if (!query) return window.PANELS;
@@ -73,7 +83,25 @@ function filterPanels(q) {
 
 function renderResults(list) {
   results.innerHTML = "";
-  if (list.length === 0) {
+
+  const total = list.length;
+  if (resultsCount) resultsCount.textContent = total ? `총 ${total}개` : "";
+
+  // 모바일은 기본 2개만 보여주고, 더보기 누르면 늘림
+  const mobileLimit = 2;
+  const limit = (isMobile() && !resultsExpanded) ? mobileLimit : 200;
+
+  // 더보기 버튼 표시/문구
+  if (btnMoreResults) {
+    if (isMobile() && total > mobileLimit) {
+      btnMoreResults.classList.remove("hidden");
+      btnMoreResults.textContent = resultsExpanded ? "접기(2개만)" : `더 보기(총 ${total}개)`;
+    } else {
+      btnMoreResults.classList.add("hidden");
+    }
+  }
+
+  if (total === 0) {
     const empty = document.createElement("div");
     empty.className = "result";
     empty.innerHTML = `<div class="name">결과 없음</div><div class="meta">검색어를 확인하세요.</div>`;
@@ -81,7 +109,7 @@ function renderResults(list) {
     return;
   }
 
-  for (const p of list.slice(0, 200)) {
+  for (const p of list.slice(0, limit)) {
     const el = document.createElement("div");
     el.className = "result";
     el.innerHTML = `
@@ -91,7 +119,17 @@ function renderResults(list) {
     el.onclick = () => goToPanel(p);
     results.appendChild(el);
   }
+
+  // 모바일에서 제한 표시 중이면 안내(선택)
+  if (isMobile() && !resultsExpanded && total > mobileLimit) {
+    const note = document.createElement("div");
+    note.className = "hint";
+    note.style.padding = "6px 4px 2px";
+    note.textContent = `모바일에서는 상위 ${mobileLimit}개만 표시 중입니다.`;
+    results.appendChild(note);
+  }
 }
+
 
 function goToPanel(p) {
   if (p.floor !== currentFloor) {
@@ -168,6 +206,25 @@ btnPick.onclick = () => {
   showToast(pickMode ? "이미지 탭하면 (x,y)가 표시됩니다." : "좌표찍기 모드 OFF");
 };
 
+// 모바일: 더보기/접기
+if (btnMoreResults) {
+  btnMoreResults.onclick = () => {
+    resultsExpanded = !resultsExpanded;
+    renderResults(filterPanels(search.value));
+  };
+}
+
+// 결과 영역 접기/펼치기 (모바일에서 도면 크게 보기)
+if (btnResultsToggle) {
+  btnResultsToggle.onclick = () => {
+    resultsHidden = !resultsHidden;
+    document.body.classList.toggle("resultsHidden", resultsHidden);
+    btnResultsToggle.textContent = resultsHidden ? "결과 펼치기" : "결과 접기";
+    // 접었다 펼칠 때 미니맵 영역/스크롤 사각형 갱신
+    setTimeout(updateMinimapRect, 50);
+  };
+}
+
 floorImg.addEventListener("click", (ev) => {
   if (!pickMode) return;
   const rect = floorImg.getBoundingClientRect();
@@ -200,5 +257,6 @@ function init() {
   });
 
   renderResults(window.PANELS);
+  if (btnResultsToggle) btnResultsToggle.textContent = "결과 접기";
 }
 init();
