@@ -98,6 +98,29 @@ body { background: #0b0d10; color: #eaeef6; }
   text-overflow: ellipsis;
 }
 @media (max-width: 900px) {
-  .main { grid-template-columns: 1fr; }
-  .sidebar { display: none; }
+  /* 모바일에서는 결과 목록을 숨기지 말고 위/아래로 쌓이게 */
+  .main {
+    grid-template-columns: 1fr;
+    grid-template-rows: 34vh 1fr;  /* 위: 결과, 아래: 도면 */
+    height: calc(100vh - 0px);
+  }
+
+  .sidebar {
+    display: block;               /* ★ 숨기지 않음 */
+    border-right: none;
+    border-bottom: 1px solid rgba(255,255,255,0.08);
+    max-height: 34vh;
+    overflow: auto;
+  }
+
+  .viewer {
+    position: relative;
+    height: 66vh;
+  }
+
+  .viewport {
+    position: absolute;
+    inset: 0;
+  }
 }
+
