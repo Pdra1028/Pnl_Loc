@@ -1,1 +1,50 @@
-<!doctype html><html><head><meta charset='utf-8'><meta name='viewport' content='width=device-width, initial-scale=1'><title>Pnl_Loc</title></head><body><h1>Pnl_Loc OK</h1><p>GitHub Pages �غ� �Ϸ�.</p></body></html>
+﻿<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Pnl_Loc</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <header class="topbar">
+    <div class="row">
+      <select id="floorSelect" title="층 선택"></select>
+      <button id="btnMinimap" class="btn">미니맵</button>
+      <button id="btnPick" class="btn">좌표찍기: OFF</button>
+    </div>
+
+    <input id="search" type="search" placeholder="판넬명 검색 (예: 1번판넬)" autocomplete="off" />
+    <div class="hint">검색 결과를 누르면 자동 이동/확대 + 하이라이트 됩니다.</div>
+  </header>
+
+  <main class="main">
+    <aside class="sidebar">
+      <div class="title">검색 결과</div>
+      <div id="results" class="results"></div>
+    </aside>
+
+    <section class="viewer">
+      <div id="viewport" class="viewport">
+        <div id="canvas" class="canvas">
+          <img id="floorImg" class="floorImg" alt="floor" />
+          <div id="marker" class="marker hidden"></div>
+        </div>
+      </div>
+
+      <div id="minimap" class="minimap hidden">
+        <div class="minimapTitle">미니맵</div>
+        <div class="minimapBox">
+          <img id="minimapImg" class="minimapImg" alt="minimap" />
+          <div id="minimapRect" class="minimapRect"></div>
+        </div>
+      </div>
+
+      <div id="toast" class="toast hidden"></div>
+    </section>
+  </main>
+
+  <script src="panels.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

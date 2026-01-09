@@ -1,0 +1,6 @@
+﻿<svg xmlns="http://www.w3.org/2000/svg" width="2000" height="1200" viewBox="0 0 2000 1200">
+  <rect width="2000" height="1200" fill="#0F172A"/>
+  <text x="60" y="110" font-size="72" fill="#E5E7EB" font-family="Arial">2F (샘플 도면)</text>
+  <circle cx="600" cy="650" r="260" fill="none" stroke="#A7F3D0" stroke-width="8"/>
+  <circle cx="1400" cy="650" r="360" fill="none" stroke="#A7F3D0" stroke-width="8"/>
+</svg>
