@@ -1,0 +1,6 @@
+﻿# Exclude tools folder
+tools/
+
+# Exclude Excel files (including temp lock files)
+*.xlsx
+~$*.xlsx
