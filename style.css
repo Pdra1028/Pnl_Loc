@@ -30,6 +30,16 @@ body { background: #0b0d10; color: #eaeef6; }
   opacity: 0.85;
 }
 
+#pickKeySelect{
+  max-width: 260px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+@media (max-width: 900px){
+  #pickKeySelect{ max-width: 46vw; }
+}
+
 /* 작은 버튼(더 보기/접기) */
 .btn.small{
   padding: 8px 10px;

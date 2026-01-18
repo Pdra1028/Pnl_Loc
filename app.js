@@ -24,6 +24,8 @@ const btnExport = $("btnExport");
 const btnZoomOut = $("btnZoomOut");
 const btnZoomIn = $("btnZoomIn");
 const btnZoomReset = $("btnZoomReset");
+const pickKeySelect = $("pickKeySelect");
+const btnPickNext = $("btnPickNext");
 const AUTO_FOCUS_SCALE = 1.6; // 검색/결과 클릭 이동 시 항상 이 배율로 복귀
 
 let currentFloor = null;
@@ -33,6 +35,8 @@ let resultsExpanded = false;   // 모바일에서 더보기 상태
 let resultsHidden = false;     // 결과 영역 접기/펼치기 상태
 
 let pickedSubRows = []; // Sub 시트로 내보낼 임시 목록: {SubKey, Sub, floor, x, y, aliases}
+let pickSubKey = "";   // 좌표찍기 대상 SubKey(미리 입력)
+let pickSelectedKey = "";  // 드롭다운에서 선택한 SubKey
 
 let imgNaturalW = 0;
 let imgNaturalH = 0;
@@ -134,6 +138,28 @@ function buildIndex() {
   for (const [k, arr] of digitsToKeys) digitsToKeys.set(k, [...new Set(arr)]);
 
   IDX = { subByKey, subList, invToKeys, digitsToKeys };
+}
+
+function fillPickKeySelect() {
+  if (!pickKeySelect) return;
+  if (!IDX) buildIndex();
+
+  // SubKey 목록: Sub 데이터 기반
+  const items = IDX.subList
+    .slice()
+    .sort((a,b) => a.floor.localeCompare(b.floor) || a.SubKey.localeCompare(b.SubKey));
+
+  // 옵션 HTML 생성 (표시: [층] SubKey | 판넬명)
+  pickKeySelect.innerHTML = [
+    `<option value="">(SubKey 선택)</option>`,
+    ...items.map(p => {
+      const label = `[${escapeHtml(p.floor)}] ${escapeHtml(p.SubKey)} | ${escapeHtml(p.name || "")}`;
+      return `<option value="${escapeHtml(p.SubKey)}">${label}</option>`;
+    })
+  ].join("");
+
+  // 기존 선택 유지
+  if (pickSelectedKey) pickKeySelect.value = pickSelectedKey;
 }
 
 function uniqueFloorsFromData() {
@@ -448,11 +474,30 @@ if (btnMinimap) {
 
 if (btnPick) {
   btnPick.onclick = () => {
-    pickMode = !pickMode;
-    btnPick.textContent = `좌표찍기: ${pickMode ? "ON" : "OFF"}`;
-    showToast(pickMode ? "이미지 탭 → SubKey/Sub 입력으로 좌표 저장" : "좌표찍기 모드 OFF");
-  };
-}
+  pickMode = !pickMode;
+
+  if (pickMode) {
+    // ✅ ON 될 때 1회만 SubKey 입력받기 (기본값: 현재층 prefix)
+    const suggested = `${currentFloor}-`;
+    const key = prompt("좌표를 찍을 SubKey를 입력하세요 (예: B1F-001):", pickSubKey || suggested);
+
+    if (!key || !key.trim()) {
+      pickMode = false;
+      btnPick.textContent = "좌표찍기: OFF";
+      showToast("SubKey가 없어 좌표찍기 모드를 종료했습니다.", 1600);
+      return;
+    }
+
+    pickSubKey = key.trim();
+    btnPick.textContent = `좌표찍기: ON (${pickSubKey})`;
+    showToast(`좌표찍기 ON: ${pickSubKey}\n이제 도면을 탭하면 좌표만 저장됩니다.`, 2200);
+
+  } else {
+    btnPick.textContent = "좌표찍기: OFF";
+    showToast("좌표찍기 모드 OFF");
+  }
+};
+
 
 // 모바일: 더보기/접기
 if (btnMoreResults) {
@@ -524,49 +569,56 @@ if (btnZoomReset) {
 floorImg.addEventListener("click", (ev) => {
   if (!pickMode) return;
 
+  // ✅ SubKey를 먼저 선택해야 함
+  const subKey = (pickKeySelect && pickKeySelect.value) ? pickKeySelect.value : pickSelectedKey;
+  if (!subKey) {
+    showToast("먼저 상단 드롭다운에서 SubKey를 선택하세요.", 1800);
+    return;
+  }
+
   const rect = floorImg.getBoundingClientRect();
   const px = (ev.clientX - rect.left);
   const py = (ev.clientY - rect.top);
   const nx = px / rect.width;
   const ny = py / rect.height;
 
-  // SubKey 기본값: 현재 층 prefix 자동 입력
-  const subKey = prompt(
-    "SubKey(층-일련번호) 입력 (예: B1F-001):",
-    `${currentFloor}-`
-  );
-  if (!subKey || !subKey.trim()) {
-    showToast("SubKey가 없어 저장하지 않았습니다.", 1400);
-    return;
-  }
+  const x = Number(nx.toFixed(4));
+  const y = Number(ny.toFixed(4));
 
-  const subName = prompt("판넬명(Sub) 입력 (예: SC1F25470):");
-  if (!subName || !subName.trim()) {
-    showToast("판넬명이 없어 저장하지 않았습니다.", 1400);
-    return;
-  }
-
-  const aliases = prompt("별칭(선택) - 콤마로 구분 (없으면 빈칸):") || "";
-
+  // 1) 임시 내보내기 목록(pickedSubRows)에 덮어쓰기
   const item = {
-    SubKey: subKey.trim(),
-    Sub: subName.trim(),
+    SubKey: subKey,
+    Sub: "",               // 이름/별칭은 미리 작성한 것을 엑셀에서 관리
     floor: currentFloor,
-    x: Number(nx.toFixed(4)),
-    y: Number(ny.toFixed(4)),
-    aliases: aliases.trim()
+    x, y,
+    aliases: ""
   };
-
-  const idx = pickedSubRows.findIndex(r => r.SubKey === item.SubKey);
+  const idx = pickedSubRows.findIndex(r => r.SubKey === subKey);
   if (idx >= 0) pickedSubRows[idx] = item;
   else pickedSubRows.push(item);
 
-  showToast(`저장됨: ${item.SubKey} / ${item.Sub} (x=${item.x}, y=${item.y})`, 1800);
+  // 2) 메모리의 Sub 데이터도 즉시 갱신(검색/이동이 바로 반영되게)
+  if (!IDX) buildIndex();
+  const p = IDX.subByKey.get(subKey);
+  if (p) {
+    p.floor = currentFloor;
+    p.x = x; p.y = y;
 
-  const tsvLine = [item.SubKey, item.Sub, item.floor, item.x, item.y, item.aliases].join("\t");
-  if (navigator.clipboard?.writeText) {
-    navigator.clipboard.writeText(tsvLine).catch(() => {});
+    // window.Sub 원본도 같이 업데이트(새로고침 전까지)
+    const raw = Array.isArray(window.Sub) ? window.Sub : [];
+    const rawIdx = raw.findIndex(r => String(r.SubKey) === String(subKey));
+    if (rawIdx >= 0) {
+      raw[rawIdx].floor = currentFloor;
+      raw[rawIdx].x = x;
+      raw[rawIdx].y = y;
+    }
   }
+
+  // 3) 하이라이트 표시 (기존 focusXY 이용)
+  focusXY(x, y, `${subKey}`);
+
+  // 4) 안내
+  showToast(`좌표 저장(덮어씀): ${subKey}\n(${x}, ${y})`, 2000);
 });
 
 /* ===== pinch zoom (mobile) ===== */
@@ -636,6 +688,31 @@ function init() {
   if (btnResultsToggle) btnResultsToggle.textContent = "결과 접기";
   updateFloorUX();
 }
+
+if (pickKeySelect) {
+  pickKeySelect.addEventListener("change", () => {
+    pickSelectedKey = pickKeySelect.value || "";
+
+    if (!pickSelectedKey) return;
+
+    if (!IDX) buildIndex();
+    const p = IDX.subByKey.get(pickSelectedKey);
+    if (!p) return;
+
+    // 선택한 SubKey의 층으로 자동 이동
+    if (p.floor && p.floor !== currentFloor) {
+      setFloor(p.floor);
+    }
+
+    // 좌표가 이미 있으면 그 위치로 표시(0,0은 미매핑일 수도 있으니 조건은 보수적으로)
+    if (typeof p.x === "number" && typeof p.y === "number" && (p.x !== 0 || p.y !== 0)) {
+      goToPanel(p);
+    } else {
+      showToast(`선택됨: ${p.SubKey} / ${p.name}\n이제 도면을 탭하면 좌표가 저장됩니다.`, 2200);
+    }
+  });
+}
+
   // ✅ 미니맵 드래그 이동(마우스/터치)
   if (minimap) {
     minimap.style.cursor = "grab";
@@ -667,5 +744,16 @@ function init() {
 
     window.addEventListener("touchend", () => endMinimapDrag(), { passive: true });
   }
+  
+if (btnPickNext) {
+  btnPickNext.onclick = () => {
+    if (!pickKeySelect) return;
+    const idx = pickKeySelect.selectedIndex;
+    if (idx < 0) return;
+    const next = Math.min(pickKeySelect.options.length - 1, idx + 1);
+    pickKeySelect.selectedIndex = next;
+    pickKeySelect.dispatchEvent(new Event("change"));
+  };
+}
 
 init();
