@@ -144,6 +144,25 @@ function fillPickKeySelect() {
   if (!pickKeySelect) return;
   if (!IDX) buildIndex();
 
+  const items = IDX.subList
+    .slice()
+    .sort((a,b) => a.floor.localeCompare(b.floor) || a.SubKey.localeCompare(b.SubKey));
+
+  pickKeySelect.innerHTML = [
+    `<option value="">(SubKey 선택)</option>`,
+    ...items.map(p => {
+      const label = `[${escapeHtml(p.floor)}] ${escapeHtml(p.SubKey)} | ${escapeHtml(p.name || "")}`;
+      return `<option value="${escapeHtml(p.SubKey)}">${label}</option>`;
+    })
+  ].join("");
+
+  if (pickSelectedKey) pickKeySelect.value = pickSelectedKey;
+}
+
+function fillPickKeySelect() {
+  if (!pickKeySelect) return;
+  if (!IDX) buildIndex();
+
   // SubKey 목록: Sub 데이터 기반
   const items = IDX.subList
     .slice()
@@ -476,28 +495,20 @@ if (btnPick) {
   btnPick.onclick = () => {
     pickMode = !pickMode;
 
+    const k = (pickKeySelect && pickKeySelect.value) ? pickKeySelect.value : pickSelectedKey;
+
     if (pickMode) {
-      // ✅ ON 될 때 1회만 SubKey 입력받기 (기본값: 현재층 prefix)
-      const suggested = `${currentFloor}-`;
-      const key = prompt("좌표를 찍을 SubKey를 입력하세요 (예: B1F-001):", pickSubKey || suggested);
+      btnPick.textContent = `좌표찍기: ON${k ? ` (${k})` : ""}`;
+      showToast("도면을 탭하면 선택된 SubKey에 좌표가 저장됩니다.", 1800);
 
-      if (!key || !key.trim()) {
-        pickMode = false;
-        btnPick.textContent = "좌표찍기: OFF";
-        showToast("SubKey가 없어 좌표찍기 모드를 종료했습니다.", 1600);
-        return;
-      }
-
-      pickSubKey = key.trim();
-      btnPick.textContent = `좌표찍기: ON (${pickSubKey})`;
-      showToast(`좌표찍기 ON: ${pickSubKey}\n이제 도면을 탭하면 좌표만 저장됩니다.`, 2200);
+      // SubKey 선택이 안 되어 있으면 안내
+      if (!k) showToast("먼저 상단 드롭다운에서 SubKey를 선택하세요.", 2200);
     } else {
       btnPick.textContent = "좌표찍기: OFF";
-      showToast("좌표찍기 모드 OFF");
+      showToast("좌표찍기 모드 OFF", 1400);
     }
   };
 }
-
 
 // 모바일: 더보기/접기
 if (btnMoreResults) {
@@ -618,7 +629,7 @@ floorImg.addEventListener("click", (ev) => {
   focusXY(x, y, `${subKey}`);
 
   // 4) 안내
-  showToast(`좌표 저장(덮어씀): ${subKey}\n(${x}, ${y})`, 2000);
+  showToast(`${subKey} 좌표 저장되었습니다.`, 1600);
 });
 
 /* ===== pinch zoom (mobile) ===== */
@@ -755,5 +766,7 @@ if (btnPickNext) {
     pickKeySelect.dispatchEvent(new Event("change"));
   };
 }
+
+fillPickKeySelect();
 
 init();
