@@ -16,6 +16,7 @@ body { background: #0b0d10; color: #eaeef6; }
   border: 1px solid rgba(255,255,255,0.12);
   background:#121722; color:#eaeef6;
 }
+
 /* 결과 헤더(제목 + 총개수) */
 .sidebarHeader{
   display:flex;
@@ -40,6 +41,7 @@ body { background: #0b0d10; color: #eaeef6; }
   display: flex;
   justify-content: flex-end;
 }
+
 #search{
   width: 100%;
   margin-top: 10px;
@@ -55,6 +57,7 @@ body { background: #0b0d10; color: #eaeef6; }
 .main { display: grid; grid-template-columns: 320px 1fr; height: calc(100% - 0px); }
 .sidebar { border-right: 1px solid rgba(255,255,255,0.08); padding: 10px; overflow: auto; }
 .sidebar .title { font-weight: 700; margin-bottom: 8px; }
+
 .results { display: flex; flex-direction: column; gap: 8px; }
 .result {
   padding: 10px; border-radius: 12px;
@@ -87,24 +90,70 @@ body { background: #0b0d10; color: #eaeef6; }
 }
 .hidden { display: none; }
 
+/* =========================
+   미니맵: 좌상단 고정 오버레이
+   (기존 .minimap 구조 유지)
+   ========================= */
 .minimap {
-  position: absolute; right: 12px; bottom: 12px;
+  position: fixed;
+  top: 64px;     /* topbar랑 겹침 방지(원하면 10px로 줄여도 됨) */
+  left: 12px;
+  z-index: 9999;
+
   width: 220px;
   border-radius: 14px;
   border: 1px solid rgba(255,255,255,0.12);
   background: rgba(15,20,32,0.92);
   backdrop-filter: blur(6px);
   padding: 10px;
+
+  /* 맵 위에 떠도 되게 */
+  pointer-events: auto;
 }
+
 .minimapTitle { font-weight: 700; margin-bottom: 8px; }
 .minimapBox { position: relative; width: 100%; }
 .minimapImg { width: 100%; display: block; border-radius: 10px; }
+
 .minimapRect {
   position: absolute;
   border: 2px solid #7ee787;
   background: rgba(126,231,135,0.10);
   border-radius: 6px;
   pointer-events: none;
+}
+
+/* 미니맵 선택 점(추가) */
+#minimapDot{
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-radius: 999px;
+  background: rgba(255, 80, 80, 0.95);
+  border: 2px solid rgba(255,255,255,0.9);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  display: none;
+}
+
+/* 우상단 층/도면 배지(추가) */
+#floorBadge{
+  position: fixed;
+  top: 64px;     /* topbar랑 겹침 방지(원하면 10px로 줄여도 됨) */
+  right: 12px;
+  z-index: 9999;
+
+  padding: 8px 10px;
+  border-radius: 12px;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(6px);
+  color: #fff;
+  border: 1px solid rgba(255,255,255,0.18);
+  font-size: 12px;
+  line-height: 1.3;
+  white-space: pre-line;
+  max-width: 60vw;
+  word-break: keep-all;
 }
 
 .toast {
@@ -121,6 +170,7 @@ body { background: #0b0d10; color: #eaeef6; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
 @media (max-width: 900px) {
   :root { --resultsH: 28vh; }  /* 결과 영역 기본 높이 */
 
@@ -148,7 +198,7 @@ body { background: #0b0d10; color: #eaeef6; }
     inset: 0;
   }
 
-  /* ★ '결과 접기' 상태: 결과 영역 자체를 숨겨 도면을 크게 */
+  /* '결과 접기' 상태: 결과 영역 자체를 숨겨 도면을 크게 */
   body.resultsHidden .main{
     grid-template-rows: 0px 1fr;
   }
@@ -157,5 +207,18 @@ body { background: #0b0d10; color: #eaeef6; }
   }
   body.resultsHidden .viewer{
     height: 100vh;
+  }
+
+  /* 모바일에서 미니맵/배지 위치 살짝 내림(겹침 방지) */
+  .minimap{
+    top: 72px;
+    left: 10px;
+    width: 170px;
+    padding: 8px;
+  }
+  #floorBadge{
+    top: 72px;
+    right: 10px;
+    max-width: 70vw;
   }
 }

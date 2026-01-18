@@ -9,14 +9,14 @@
 <body>
   <header class="topbar">
     <div class="row">
-  <select id="floorSelect" title="층 선택"></select>
-  <button id="btnMinimap" class="btn">미니맵</button>
-  <button id="btnPick" class="btn">좌표찍기: OFF</button>
-  <button id="btnResultsToggle" class="btn">결과 접기</button>
-  <button id="btnExport" class="btn">내보내기</button>
-  <button id="btnZoomOut" class="btn">-</button>
-  <button id="btnZoomIn" class="btn">+</button>
-  <button id="btnZoomReset" class="btn">100%</button>
+      <select id="floorSelect" title="층 선택"></select>
+      <button id="btnMinimap" class="btn">미니맵</button>
+      <button id="btnPick" class="btn">좌표찍기: OFF</button>
+      <button id="btnResultsToggle" class="btn">결과 접기</button>
+      <button id="btnExport" class="btn">내보내기</button>
+      <button id="btnZoomOut" class="btn">-</button>
+      <button id="btnZoomIn" class="btn">+</button>
+      <button id="btnZoomReset" class="btn">100%</button>
     </div>
 
     <input id="search" type="search" placeholder="판넬명 검색 (예: 1번판넬)" autocomplete="off" />
@@ -25,16 +25,16 @@
 
   <main class="main">
     <aside class="sidebar" id="sidebar">
-		<div class="sidebarHeader">
-				<div class="title">검색 결과</div>
-				<div id="resultsCount" class="count"></div>
-		</div>
+      <div class="sidebarHeader">
+        <div class="title">검색 결과</div>
+        <div id="resultsCount" class="count"></div>
+      </div>
 
-		<div id="results" class="results"></div>
+      <div id="results" class="results"></div>
 
-		<div class="resultsFooter">
-			<button id="btnMoreResults" class="btn small hidden">더 보기</button>
-		</div>
+      <div class="resultsFooter">
+        <button id="btnMoreResults" class="btn small hidden">더 보기</button>
+      </div>
     </aside>
 
     <section class="viewer">
@@ -45,17 +45,23 @@
         </div>
       </div>
 
+      <!-- ✅ 미니맵은 이 1개만 사용 -->
       <div id="minimap" class="minimap hidden">
         <div class="minimapTitle">미니맵</div>
         <div class="minimapBox">
           <img id="minimapImg" class="minimapImg" alt="minimap" />
           <div id="minimapRect" class="minimapRect"></div>
+          <!-- ✅ 선택 위치 점(추가) -->
+          <div id="minimapDot"></div>
         </div>
       </div>
 
       <div id="toast" class="toast hidden"></div>
     </section>
   </main>
+
+  <!-- ✅ 우상단 층/도면(통합) 표시 배지 -->
+  <div id="floorBadge"></div>
 
   <script src="panels.js"></script>
   <script src="app.js"></script>

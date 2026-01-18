@@ -7,13 +7,16 @@ const floorImg = $("floorImg");
 const viewport = $("viewport");
 const canvas = $("canvas");
 const marker = $("marker");
+
 const minimap = $("minimap");
 const minimapImg = $("minimapImg");
 const minimapRect = $("minimapRect");
+const minimapDot = $("minimapDot");         // 추가
+const floorBadge = $("floorBadge");         // 추가
+
 const toast = $("toast");
 const btnMinimap = $("btnMinimap");
 const btnPick = $("btnPick");
-const sidebar = $("sidebar");
 const btnResultsToggle = $("btnResultsToggle");
 const resultsCount = $("resultsCount");
 const btnMoreResults = $("btnMoreResults");
@@ -27,9 +30,13 @@ let currentScale = 1.6;
 let pickMode = false;
 let resultsExpanded = false;   // 모바일에서 더보기 상태
 let resultsHidden = false;     // 결과 영역 접기/펼치기 상태
+
 let pickedSubRows = []; // Sub 시트로 내보낼 임시 목록: {SubKey, Sub, floor, x, y, aliases}
+
 let imgNaturalW = 0;
 let imgNaturalH = 0;
+
+let lastSelectedXY = null; // { x, y, floor }
 
 function showToast(msg, ms = 1400) {
   toast.textContent = msg;
@@ -38,65 +45,41 @@ function showToast(msg, ms = 1400) {
   showToast._t = setTimeout(() => toast.classList.add("hidden"), ms);
 }
 
-function uniqueFloorsFromData() {
-  if (!IDX) buildIndex();
-  const floors = new Set(IDX.subList.map(p => p.floor).filter(Boolean));
-  // 혹시 Sub 데이터가 비어 있어도 FLOORS 키로 선택 가능하게
-  for (const f of Object.keys(window.FLOORS || {})) floors.add(f);
-  return [...floors];
-}
-
-function setFloor(floor) {
-  currentFloor = floor;
-  const src = window.FLOORS[floor];
-  if (!src) {
-    showToast(`층 이미지 매핑이 없습니다: ${floor}`);
-    return;
-  }
-  floorImg.src = src;
-  minimapImg.src = src;
-  marker.classList.add("hidden");
-
-  floorImg.onload = () => {
-    imgNaturalW = floorImg.naturalWidth || floorImg.width;
-    imgNaturalH = floorImg.naturalHeight || floorImg.height;
-    applyScale(currentScale);
-    viewport.scrollLeft = 0;
-    viewport.scrollTop = 0;
-    updateMinimapRect();
-  };
-}
-
-function applyScale(newScale, anchorClientX = null, anchorClientY = null) {
-  const prevScale = currentScale;
-  currentScale = Math.max(0.6, Math.min(4.0, newScale));
-  canvas.style.transform = `scale(${currentScale})`;
-
-  // 줌 시 화면 중심(또는 포인터 위치)을 최대한 유지
-  if (anchorClientX !== null && anchorClientY !== null && imgNaturalW > 0) {
-    const vpRect = viewport.getBoundingClientRect();
-
-    // anchor가 viewport 안에서 차지하는 비율
-    const ax = anchorClientX - vpRect.left;
-    const ay = anchorClientY - vpRect.top;
-
-    const worldX = (viewport.scrollLeft + ax) / prevScale;
-    const worldY = (viewport.scrollTop + ay) / prevScale;
-
-    viewport.scrollLeft = worldX * currentScale - ax;
-    viewport.scrollTop  = worldY * currentScale - ay;
-  }
-
-  if (btnZoomReset) btnZoomReset.textContent = `${Math.round(currentScale * 100)}%`;
-  updateMinimapRect();
-}
-
 function escapeHtml(s) {
   return String(s).replace(/[&<>"']/g, c => ({
     "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
   }[c]));
 }
 
+function isMobile() {
+  return window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
+}
+
+/* ===== floor image mapping UX ===== */
+function canonicalFloorKey(floor) {
+  const src = (window.FLOORS || {})[floor];
+  if (!src) return floor;
+
+  const mergedSrc = (window.FLOORS || {})["B2F"];
+  if (mergedSrc && src === mergedSrc) return "B2F";
+  return floor;
+}
+
+function updateFloorUX() {
+  const sel = floorSelect?.value || currentFloor;
+  if (!sel) return;
+
+  const canon = canonicalFloorKey(sel);
+  const isMerged = (canon === "B2F" && sel !== "B2F");
+
+  const txt = isMerged
+    ? `선택 층: ${sel}\n표시 도면: ${canon} (통합)`
+    : `선택 층: ${sel}\n표시 도면: ${canon}`;
+
+  if (floorBadge) floorBadge.textContent = txt;
+}
+
+/* ===== data index ===== */
 let IDX = null;
 
 function buildIndex() {
@@ -114,7 +97,11 @@ function buildIndex() {
       floor: String(s.floor || ""),
       x: Number(s.x ?? 0),
       y: Number(s.y ?? 0),
-      aliases: Array.isArray(s.aliases) ? s.aliases : (typeof s.aliases === "string" && s.aliases ? s.aliases.split(",").map(x=>x.trim()).filter(Boolean) : [])
+      aliases: Array.isArray(s.aliases)
+        ? s.aliases
+        : (typeof s.aliases === "string" && s.aliases
+            ? s.aliases.split(",").map(x=>x.trim()).filter(Boolean)
+            : [])
     };
     subByKey.set(item.SubKey, item);
     subList.push(item);
@@ -127,8 +114,10 @@ function buildIndex() {
     if (!r || !r.Inv || !r.SubKey) continue;
     const inv = String(r.Inv);
     const key = String(r.SubKey);
-    if (!invToKeys.has(inv.toLowerCase())) invToKeys.set(inv.toLowerCase(), []);
-    invToKeys.get(inv.toLowerCase()).push(key);
+
+    const k1 = inv.toLowerCase();
+    if (!invToKeys.has(k1)) invToKeys.set(k1, []);
+    invToKeys.get(k1).push(key);
 
     const digits = (r.digits ? String(r.digits) : inv.replace(/\D/g, ""));
     if (digits) {
@@ -137,27 +126,17 @@ function buildIndex() {
     }
   }
 
-  // 중복 제거(키 목록)
   for (const [k, arr] of invToKeys) invToKeys.set(k, [...new Set(arr)]);
   for (const [k, arr] of digitsToKeys) digitsToKeys.set(k, [...new Set(arr)]);
 
   IDX = { subByKey, subList, invToKeys, digitsToKeys };
 }
 
-function isMobile() {
-  return window.matchMedia && window.matchMedia("(max-width: 900px)").matches;
-}
-
-function getPanelList() {
-  // 요구사항: 판넬 목록은 window.Sub, 설비 목록은 Inv
-  const arr = window.Sub || [];
-  return arr.map(it => ({
-    name: it.Sub,          // 판넬명
-    floor: it.floor,
-    x: it.x,
-    y: it.y,
-    Inv: Array.isArray(it.Inv) ? it.Inv : []
-  }));
+function uniqueFloorsFromData() {
+  if (!IDX) buildIndex();
+  const floors = new Set(IDX.subList.map(p => p.floor).filter(Boolean));
+  for (const f of Object.keys(window.FLOORS || {})) floors.add(f);
+  return [...floors];
 }
 
 function filterPanels(q) {
@@ -168,48 +147,130 @@ function filterPanels(q) {
   if (!query) return IDX.subList;
 
   const digits = queryRaw.replace(/\D/g, "");
-
   const hitKeys = new Set();
 
-  // 1) Sub / aliases 매칭
   for (const p of IDX.subList) {
     if (p.name.toLowerCase().includes(query)) hitKeys.add(p.SubKey);
     else if (p.aliases.some(a => a.toLowerCase().includes(query))) hitKeys.add(p.SubKey);
   }
 
-  // 2) Inv 전체 매칭
   const keys1 = IDX.invToKeys.get(query);
   if (keys1) keys1.forEach(k => hitKeys.add(k));
 
-  // 3) Inv 숫자만 매칭 (25485)
   if (digits) {
     const keys2 = IDX.digitsToKeys.get(digits);
     if (keys2) keys2.forEach(k => hitKeys.add(k));
   }
 
-  // SubKey -> panel 변환, 없는 키는 무시
   const out = [];
   for (const k of hitKeys) {
     const p = IDX.subByKey.get(k);
     if (p) out.push(p);
   }
 
-  // 정렬(층 -> SubKey)
   out.sort((a,b) => a.floor.localeCompare(b.floor) || a.SubKey.localeCompare(b.SubKey));
   return out;
 }
 
+/* ===== floor / zoom ===== */
+function setFloor(floor) {
+  currentFloor = floor;
+  const src = (window.FLOORS || {})[floor];
+  if (!src) {
+    showToast(`층 이미지 매핑이 없습니다: ${floor}`);
+    return;
+  }
+
+  floorImg.src = src;
+  if (minimapImg) minimapImg.src = src;
+
+  marker.classList.add("hidden");
+  updateFloorUX();
+
+  floorImg.onload = () => {
+    imgNaturalW = floorImg.naturalWidth || floorImg.width;
+    imgNaturalH = floorImg.naturalHeight || floorImg.height;
+
+    applyScale(currentScale);
+    viewport.scrollLeft = 0;
+    viewport.scrollTop = 0;
+
+    updateMinimapRect();
+    updateMinimapDot();
+  };
+}
+
+function applyScale(newScale, anchorClientX = null, anchorClientY = null) {
+  const prevScale = currentScale;
+  currentScale = Math.max(0.6, Math.min(4.0, newScale));
+  canvas.style.transform = `scale(${currentScale})`;
+
+  if (anchorClientX !== null && anchorClientY !== null && imgNaturalW > 0) {
+    const vpRect = viewport.getBoundingClientRect();
+    const ax = anchorClientX - vpRect.left;
+    const ay = anchorClientY - vpRect.top;
+
+    const worldX = (viewport.scrollLeft + ax) / prevScale;
+    const worldY = (viewport.scrollTop + ay) / prevScale;
+
+    viewport.scrollLeft = worldX * currentScale - ax;
+    viewport.scrollTop  = worldY * currentScale - ay;
+  }
+
+  if (btnZoomReset) btnZoomReset.textContent = `${Math.round(currentScale * 100)}%`;
+  updateMinimapRect();
+}
+
+/* ===== minimap ===== */
+function updateMinimapRect() {
+  if (!minimap || minimap.classList.contains("hidden")) return;
+  if (!floorImg.complete || imgNaturalW === 0) return;
+
+  const mmW = minimapImg.clientWidth;
+  const mmH = minimapImg.clientHeight;
+
+  const viewLeft = viewport.scrollLeft / currentScale;
+  const viewTop  = viewport.scrollTop  / currentScale;
+  const viewW    = viewport.clientWidth  / currentScale;
+  const viewH    = viewport.clientHeight / currentScale;
+
+  const rx = (viewLeft / imgNaturalW) * mmW;
+  const ry = (viewTop  / imgNaturalH) * mmH;
+  const rw = (viewW    / imgNaturalW) * mmW;
+  const rh = (viewH    / imgNaturalH) * mmH;
+
+  minimapRect.style.left = `${rx}px`;
+  minimapRect.style.top  = `${ry}px`;
+  minimapRect.style.width  = `${rw}px`;
+  minimapRect.style.height = `${rh}px`;
+}
+
+function updateMinimapDot() {
+  if (!minimapDot) return;
+  if (!lastSelectedXY || lastSelectedXY.floor !== currentFloor) {
+    minimapDot.style.display = "none";
+    return;
+  }
+  if (!minimapImg) return;
+
+  const mmW = minimapImg.clientWidth;
+  const mmH = minimapImg.clientHeight;
+
+  minimapDot.style.left = `${lastSelectedXY.x * mmW}px`;
+  minimapDot.style.top  = `${lastSelectedXY.y * mmH}px`;
+  minimapDot.style.display = "block";
+}
+
+/* ===== results ===== */
 function renderResults(list) {
   results.innerHTML = "";
 
   const total = list.length;
   if (resultsCount) resultsCount.textContent = total ? `총 ${total}개` : "";
 
-  // 모바일은 기본 2개만 보여주고, 더보기 누르면 늘림
   const mobileLimit = 2;
   const limit = (isMobile() && !resultsExpanded) ? mobileLimit : 200;
 
-  // 더보기 버튼 표시/문구
   if (btnMoreResults) {
     if (isMobile() && total > mobileLimit) {
       btnMoreResults.classList.remove("hidden");
@@ -238,7 +299,6 @@ function renderResults(list) {
     results.appendChild(el);
   }
 
-  // 모바일에서 제한 표시 중이면 안내(선택)
   if (isMobile() && !resultsExpanded && total > mobileLimit) {
     const note = document.createElement("div");
     note.className = "hint";
@@ -246,14 +306,15 @@ function renderResults(list) {
     note.textContent = `모바일에서는 상위 ${mobileLimit}개만 표시 중입니다.`;
     results.appendChild(note);
   }
-    // UX: 검색 결과가 정확히 1개면 자동 이동(모바일에서 특히 편함)
+
   if (list.length === 1) {
     goToPanel(list[0]);
   }
 }
 
-
 function goToPanel(p) {
+  lastSelectedXY = { x: p.x, y: p.y, floor: p.floor };
+
   if (p.floor !== currentFloor) {
     setFloor(p.floor);
     const tryMove = () => {
@@ -280,8 +341,6 @@ function focusXY(nx, ny, label) {
   void marker.offsetWidth;
   marker.classList.add("pulse");
 
-  applyScale(currentScale);
-
   const targetLeft = x * currentScale - viewport.clientWidth / 2;
   const targetTop  = y * currentScale - viewport.clientHeight / 2;
 
@@ -289,53 +348,45 @@ function focusXY(nx, ny, label) {
   viewport.scrollTop  = Math.max(0, targetTop);
 
   updateMinimapRect();
+  updateMinimapDot();
   showToast(`이동: ${label}`);
 }
 
-function updateMinimapRect() {
-  if (minimap.classList.contains("hidden")) return;
-  if (!floorImg.complete || imgNaturalW === 0) return;
+/* ===== events ===== */
+viewport.addEventListener("scroll", () => {
+  updateMinimapRect();
+}, { passive: true });
 
-  const mmW = minimapImg.clientWidth;
-  const mmH = minimapImg.clientHeight;
-
-  const viewLeft = viewport.scrollLeft / currentScale;
-  const viewTop  = viewport.scrollTop  / currentScale;
-  const viewW    = viewport.clientWidth  / currentScale;
-  const viewH    = viewport.clientHeight / currentScale;
-
-  const rx = (viewLeft / imgNaturalW) * mmW;
-  const ry = (viewTop  / imgNaturalH) * mmH;
-  const rw = (viewW    / imgNaturalW) * mmW;
-  const rh = (viewH    / imgNaturalH) * mmH;
-
-  minimapRect.style.left = `${rx}px`;
-  minimapRect.style.top  = `${ry}px`;
-  minimapRect.style.width  = `${rw}px`;
-  minimapRect.style.height = `${rh}px`;
-}
-
-viewport.addEventListener("scroll", () => updateMinimapRect(), { passive: true });
 viewport.addEventListener("wheel", (e) => {
-  // 트랙패드/휠로 스크롤은 그대로 두고, Ctrl(또는 pinch-to-zoom in Chrome)일 때만 확대
   if (!e.ctrlKey) return;
-
   e.preventDefault();
-  const delta = -e.deltaY; // 위로 휠: 확대
+  const delta = -e.deltaY;
   const factor = delta > 0 ? 1.08 : 1/1.08;
   applyScale(currentScale * factor, e.clientX, e.clientY);
 }, { passive: false });
 
-btnMinimap.onclick = () => {
-  minimap.classList.toggle("hidden");
-  if (!minimap.classList.contains("hidden")) updateMinimapRect();
-};
+window.addEventListener("resize", () => setTimeout(() => {
+  updateMinimapRect();
+  updateMinimapDot();
+}, 0));
 
-btnPick.onclick = () => {
-  pickMode = !pickMode;
-  btnPick.textContent = `좌표찍기: ${pickMode ? "ON" : "OFF"}`;
-  showToast(pickMode ? "이미지 탭하면 (x,y)가 표시됩니다." : "좌표찍기 모드 OFF");
-};
+if (btnMinimap) {
+  btnMinimap.onclick = () => {
+    minimap.classList.toggle("hidden");
+    if (!minimap.classList.contains("hidden")) {
+      updateMinimapRect();
+      updateMinimapDot();
+    }
+  };
+}
+
+if (btnPick) {
+  btnPick.onclick = () => {
+    pickMode = !pickMode;
+    btnPick.textContent = `좌표찍기: ${pickMode ? "ON" : "OFF"}`;
+    showToast(pickMode ? "이미지 탭 → SubKey/Sub 입력으로 좌표 저장" : "좌표찍기 모드 OFF");
+  };
+}
 
 // 모바일: 더보기/접기
 if (btnMoreResults) {
@@ -345,63 +396,65 @@ if (btnMoreResults) {
   };
 }
 
-// 결과 영역 접기/펼치기 (모바일에서 도면 크게 보기)
+// 결과 영역 접기/펼치기
 if (btnResultsToggle) {
   btnResultsToggle.onclick = () => {
     resultsHidden = !resultsHidden;
     document.body.classList.toggle("resultsHidden", resultsHidden);
     btnResultsToggle.textContent = resultsHidden ? "결과 펼치기" : "결과 접기";
-    // 접었다 펼칠 때 미니맵 영역/스크롤 사각형 갱신
     setTimeout(updateMinimapRect, 50);
-	if (btnExport) {
+  };
+}
+
+// Export: TSV 전체 복사 (※ 원래 코드에서 중괄호가 여기로 들어와야 정상)
+if (btnExport) {
   btnExport.onclick = async () => {
-		if (!pickedSubRows.length) {
-		  showToast("내보낼 Sub 데이터가 없습니다. 좌표찍기 ON으로 먼저 저장하세요.", 1800);
-		  return;
-		}
+    if (!pickedSubRows.length) {
+      showToast("내보낼 Sub 데이터가 없습니다. 좌표찍기 ON으로 먼저 저장하세요.", 1800);
+      return;
+    }
 
-		// TSV 헤더 포함
-		const header = ["SubKey", "Sub", "floor", "x", "y", "aliases"].join("\t");
-		const lines = pickedSubRows
-		  .slice()
-		  .sort((a,b) => a.floor.localeCompare(b.floor) || a.SubKey.localeCompare(b.SubKey))
-		  .map(r => [
-			r.SubKey ?? "",
-			r.Sub ?? "",
-			r.floor ?? "",
-			r.x ?? "",
-			r.y ?? "",
-			r.aliases ?? ""
-		  ].join("\t"));
+    const header = ["SubKey", "Sub", "floor", "x", "y", "aliases"].join("\t");
+    const lines = pickedSubRows
+      .slice()
+      .sort((a,b) => a.floor.localeCompare(b.floor) || a.SubKey.localeCompare(b.SubKey))
+      .map(r => [r.SubKey ?? "", r.Sub ?? "", r.floor ?? "", r.x ?? "", r.y ?? "", r.aliases ?? ""].join("\t"));
 
-		const tsv = [header, ...lines].join("\n");
+    const tsv = [header, ...lines].join("\n");
 
-		// 클립보드 복사 시도
-		try {
-		  if (navigator.clipboard?.writeText) {
-			await navigator.clipboard.writeText(tsv);
-			showToast(`TSV 복사 완료 (${pickedSubRows.length}개) - 엑셀 Sub 시트에 붙여넣기`, 2200);
-		  } else {
-			alert(tsv);
-		  }
-		} catch (e) {
-		  alert(tsv);
-		}
-	  };
-	}
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(tsv);
+        showToast(`TSV 복사 완료 (${pickedSubRows.length}개) - 엑셀 Sub 시트에 붙여넣기`, 2200);
+      } else {
+        alert(tsv);
+      }
+    } catch (e) {
+      alert(tsv);
+    }
   };
 }
 
 if (btnZoomIn) {
-  btnZoomIn.onclick = () => applyScale(currentScale * 1.15, viewport.getBoundingClientRect().left + viewport.clientWidth/2, viewport.getBoundingClientRect().top + viewport.clientHeight/2);
+  btnZoomIn.onclick = () => {
+    const r = viewport.getBoundingClientRect();
+    applyScale(currentScale * 1.15, r.left + r.width/2, r.top + r.height/2);
+  };
 }
 if (btnZoomOut) {
-  btnZoomOut.onclick = () => applyScale(currentScale / 1.15, viewport.getBoundingClientRect().left + viewport.clientWidth/2, viewport.getBoundingClientRect().top + viewport.clientHeight/2);
+  btnZoomOut.onclick = () => {
+    const r = viewport.getBoundingClientRect();
+    applyScale(currentScale / 1.15, r.left + r.width/2, r.top + r.height/2);
+  };
 }
 if (btnZoomReset) {
-  btnZoomReset.onclick = () => applyScale(1.0, viewport.getBoundingClientRect().left + viewport.clientWidth/2, viewport.getBoundingClientRect().top + viewport.clientHeight/2);
+  btnZoomReset.onclick = () => {
+    const r = viewport.getBoundingClientRect();
+    applyScale(1.0, r.left + r.width/2, r.top + r.height/2);
+  };
 }
 
+/* ===== pick tool ===== */
 floorImg.addEventListener("click", (ev) => {
   if (!pickMode) return;
 
@@ -411,8 +464,11 @@ floorImg.addEventListener("click", (ev) => {
   const nx = px / rect.width;
   const ny = py / rect.height;
 
-  // 좌표찍기 ON일 때: SubKey / Sub 입력받아 임시 목록에 추가
-  const subKey = prompt("SubKey(층-일련번호) 입력 (예: B1F-001):");
+  // SubKey 기본값: 현재 층 prefix 자동 입력
+  const subKey = prompt(
+    "SubKey(층-일련번호) 입력 (예: B1F-001):",
+    `${currentFloor}-`
+  );
   if (!subKey || !subKey.trim()) {
     showToast("SubKey가 없어 저장하지 않았습니다.", 1400);
     return;
@@ -435,54 +491,19 @@ floorImg.addEventListener("click", (ev) => {
     aliases: aliases.trim()
   };
 
-  // 같은 SubKey가 있으면 덮어쓰기(좌표 재찍기 편의)
   const idx = pickedSubRows.findIndex(r => r.SubKey === item.SubKey);
   if (idx >= 0) pickedSubRows[idx] = item;
   else pickedSubRows.push(item);
 
-  // 저장 안내
   showToast(`저장됨: ${item.SubKey} / ${item.Sub} (x=${item.x}, y=${item.y})`, 1800);
 
-  // 클립보드에는 "Sub 시트 1줄 TSV" 복사(붙여넣기 편의)
   const tsvLine = [item.SubKey, item.Sub, item.floor, item.x, item.y, item.aliases].join("\t");
   if (navigator.clipboard?.writeText) {
     navigator.clipboard.writeText(tsvLine).catch(() => {});
   }
 });
 
-function init() {
-  // 검색 인덱스 준비 (window.Sub / window.Inv 기반)
-  if (!IDX) buildIndex();
-
-  // 층 목록 구성 (Sub 데이터의 floor + FLOORS 키 포함)
-  const floors = uniqueFloorsFromData();
-  floorSelect.innerHTML = floors
-    .map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`)
-    .join("");
-
-  // 첫 층 선택 우선순위: FLOORS 첫 키 -> floors[0]
-  const floorKeys = Object.keys(window.FLOORS || {});
-  const firstFloor = floorKeys[0] || floors[0];
-
-  if (firstFloor) {
-    floorSelect.value = firstFloor;
-    setFloor(firstFloor);
-  }
-
-  const doSearch = () => renderResults(filterPanels(search.value));
-  search.addEventListener("input", doSearch);
-
-  floorSelect.addEventListener("change", () => {
-    setFloor(floorSelect.value);
-    renderResults(filterPanels(search.value));
-  });
-
-  // 초기 렌더: 전체(Sub 전체) 표시
-  renderResults(filterPanels(""));
-
-  if (btnResultsToggle) btnResultsToggle.textContent = "결과 접기";
-}
-
+/* ===== pinch zoom (mobile) ===== */
 let pinchStartDist = null;
 let pinchStartScale = null;
 
@@ -501,9 +522,7 @@ viewport.addEventListener("touchstart", (e) => {
 
 viewport.addEventListener("touchmove", (e) => {
   if (e.touches.length === 2 && pinchStartDist && pinchStartScale) {
-    // iOS/Android 브라우저 기본 확대 제스처와 충돌 방지
     e.preventDefault();
-
     const d = dist2(e.touches[0], e.touches[1]);
     const ratio = d / pinchStartDist;
 
@@ -520,5 +539,36 @@ viewport.addEventListener("touchend", (e) => {
     pinchStartScale = null;
   }
 }, { passive: true });
+
+/* ===== init ===== */
+function init() {
+  if (!IDX) buildIndex();
+
+  const floors = uniqueFloorsFromData();
+  floorSelect.innerHTML = floors
+    .map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`)
+    .join("");
+
+  const floorKeys = Object.keys(window.FLOORS || {});
+  const firstFloor = floorKeys[0] || floors[0];
+
+  if (firstFloor) {
+    floorSelect.value = firstFloor;
+    setFloor(firstFloor);
+  }
+
+  const doSearch = () => renderResults(filterPanels(search.value));
+  search.addEventListener("input", doSearch);
+
+  floorSelect.addEventListener("change", () => {
+    setFloor(floorSelect.value);
+    renderResults(filterPanels(search.value));
+  });
+
+  renderResults(filterPanels(""));
+
+  if (btnResultsToggle) btnResultsToggle.textContent = "결과 접기";
+  updateFloorUX();
+}
 
 init();
