@@ -474,29 +474,29 @@ if (btnMinimap) {
 
 if (btnPick) {
   btnPick.onclick = () => {
-  pickMode = !pickMode;
+    pickMode = !pickMode;
 
-  if (pickMode) {
-    // ✅ ON 될 때 1회만 SubKey 입력받기 (기본값: 현재층 prefix)
-    const suggested = `${currentFloor}-`;
-    const key = prompt("좌표를 찍을 SubKey를 입력하세요 (예: B1F-001):", pickSubKey || suggested);
+    if (pickMode) {
+      // ✅ ON 될 때 1회만 SubKey 입력받기 (기본값: 현재층 prefix)
+      const suggested = `${currentFloor}-`;
+      const key = prompt("좌표를 찍을 SubKey를 입력하세요 (예: B1F-001):", pickSubKey || suggested);
 
-    if (!key || !key.trim()) {
-      pickMode = false;
+      if (!key || !key.trim()) {
+        pickMode = false;
+        btnPick.textContent = "좌표찍기: OFF";
+        showToast("SubKey가 없어 좌표찍기 모드를 종료했습니다.", 1600);
+        return;
+      }
+
+      pickSubKey = key.trim();
+      btnPick.textContent = `좌표찍기: ON (${pickSubKey})`;
+      showToast(`좌표찍기 ON: ${pickSubKey}\n이제 도면을 탭하면 좌표만 저장됩니다.`, 2200);
+    } else {
       btnPick.textContent = "좌표찍기: OFF";
-      showToast("SubKey가 없어 좌표찍기 모드를 종료했습니다.", 1600);
-      return;
+      showToast("좌표찍기 모드 OFF");
     }
-
-    pickSubKey = key.trim();
-    btnPick.textContent = `좌표찍기: ON (${pickSubKey})`;
-    showToast(`좌표찍기 ON: ${pickSubKey}\n이제 도면을 탭하면 좌표만 저장됩니다.`, 2200);
-
-  } else {
-    btnPick.textContent = "좌표찍기: OFF";
-    showToast("좌표찍기 모드 OFF");
-  }
-};
+  };
+}
 
 
 // 모바일: 더보기/접기
