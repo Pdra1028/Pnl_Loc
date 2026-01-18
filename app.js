@@ -24,6 +24,7 @@ const btnExport = $("btnExport");
 const btnZoomOut = $("btnZoomOut");
 const btnZoomIn = $("btnZoomIn");
 const btnZoomReset = $("btnZoomReset");
+const AUTO_FOCUS_SCALE = 1.6; // 검색/결과 클릭 이동 시 항상 이 배율로 복귀
 
 let currentFloor = null;
 let currentScale = 1.6;
@@ -35,6 +36,9 @@ let pickedSubRows = []; // Sub 시트로 내보낼 임시 목록: {SubKey, Sub, 
 
 let imgNaturalW = 0;
 let imgNaturalH = 0;
+let miniDragging = false;
+let miniDragOffsetX = 0;
+let miniDragOffsetY = 0;
 
 let lastSelectedXY = null; // { x, y, floor }
 
@@ -312,6 +316,65 @@ function renderResults(list) {
   }
 }
 
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+
+function setMinimapPos(left, top) {
+  minimap.style.left = `${left}px`;
+  minimap.style.top  = `${top}px`;
+  // 저장(원하면 유지)
+  try { localStorage.setItem("minimap_pos", JSON.stringify({ left, top })); } catch {}
+}
+
+function restoreMinimapPos() {
+  try {
+    const raw = localStorage.getItem("minimap_pos");
+    if (!raw) return;
+    const p = JSON.parse(raw);
+    if (typeof p.left === "number" && typeof p.top === "number") {
+      minimap.style.left = `${p.left}px`;
+      minimap.style.top  = `${p.top}px`;
+    }
+  } catch {}
+}
+
+function startMinimapDrag(clientX, clientY) {
+  if (!minimap || minimap.classList.contains("hidden")) return;
+  const mmRect = minimap.getBoundingClientRect();
+  miniDragging = true;
+  miniDragOffsetX = clientX - mmRect.left;
+  miniDragOffsetY = clientY - mmRect.top;
+  minimap.style.cursor = "grabbing";
+}
+
+function moveMinimapDrag(clientX, clientY) {
+  if (!miniDragging) return;
+
+  // 기준: viewer 안에서만 움직이게 제한
+  const viewer = document.querySelector(".viewer");
+  if (!viewer) return;
+
+  const vRect = viewer.getBoundingClientRect();
+  const mmRect = minimap.getBoundingClientRect();
+
+  // viewer 좌표계 기준으로 목표 좌표 계산
+  let left = (clientX - vRect.left) - miniDragOffsetX;
+  let top  = (clientY - vRect.top)  - miniDragOffsetY;
+
+  const maxLeft = vRect.width  - mmRect.width;
+  const maxTop  = vRect.height - mmRect.height;
+
+  left = clamp(left, 0, Math.max(0, maxLeft));
+  top  = clamp(top,  0, Math.max(0, maxTop));
+
+  setMinimapPos(left, top);
+}
+
+function endMinimapDrag() {
+  if (!miniDragging) return;
+  miniDragging = false;
+  minimap.style.cursor = "grab";
+}
+
 function goToPanel(p) {
   lastSelectedXY = { x: p.x, y: p.y, floor: p.floor };
 
@@ -331,6 +394,9 @@ function goToPanel(p) {
 }
 
 function focusXY(nx, ny, label) {
+	//검색 이동 시 기본 배율로 복귀
+	applyScale(AUTO_FOCUS_SCALE);
+	
   const x = nx * imgNaturalW;
   const y = ny * imgNaturalH;
 
@@ -570,5 +636,36 @@ function init() {
   if (btnResultsToggle) btnResultsToggle.textContent = "결과 접기";
   updateFloorUX();
 }
+  // ✅ 미니맵 드래그 이동(마우스/터치)
+  if (minimap) {
+    minimap.style.cursor = "grab";
+    restoreMinimapPos();
+
+    // 마우스 드래그
+    minimap.addEventListener("mousedown", (e) => {
+      // 클릭으로 지도 스크롤/선택 같은 동작이 있다면 방지
+      e.preventDefault();
+      startMinimapDrag(e.clientX, e.clientY);
+    });
+
+    window.addEventListener("mousemove", (e) => moveMinimapDrag(e.clientX, e.clientY));
+    window.addEventListener("mouseup", () => endMinimapDrag());
+
+    // 터치 드래그
+    minimap.addEventListener("touchstart", (e) => {
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      startMinimapDrag(t.clientX, t.clientY);
+    }, { passive: true });
+
+    window.addEventListener("touchmove", (e) => {
+      if (!miniDragging) return;
+      if (e.touches.length !== 1) return;
+      const t = e.touches[0];
+      moveMinimapDrag(t.clientX, t.clientY);
+    }, { passive: true });
+
+    window.addEventListener("touchend", () => endMinimapDrag(), { passive: true });
+  }
 
 init();
