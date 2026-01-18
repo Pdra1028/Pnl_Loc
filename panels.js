@@ -2,7 +2,7 @@
   {
     "SubKey": "B1F-001",
     "Sub": "SC1E30000",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0.0991,
     "y": 0.6901,
     "aliases": [
@@ -12,7 +12,7 @@
   {
     "SubKey": "B1F-002",
     "Sub": "SC1F25400",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0.1348,
     "y": 0.408,
     "aliases": [
@@ -22,7 +22,7 @@
   {
     "SubKey": "B1F-003",
     "Sub": "SC1F25530",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0.3472,
     "y": 0.4323,
     "aliases": [
@@ -32,7 +32,7 @@
   {
     "SubKey": "B1F-004",
     "Sub": "SC1F21590",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -42,7 +42,7 @@
   {
     "SubKey": "B1F-005",
     "Sub": "SC1F20770",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -52,7 +52,7 @@
   {
     "SubKey": "B1F-006",
     "Sub": "SC1F25740",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -62,7 +62,7 @@
   {
     "SubKey": "B1F-007",
     "Sub": "누전_SC1F25740",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -72,7 +72,7 @@
   {
     "SubKey": "B1F-008",
     "Sub": "SC1F26110",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -82,7 +82,7 @@
   {
     "SubKey": "B1F-009",
     "Sub": "누전_SC1F26110",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -92,7 +92,7 @@
   {
     "SubKey": "B1F-010",
     "Sub": "SC1F26560",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -102,7 +102,7 @@
   {
     "SubKey": "B1F-011",
     "Sub": "SC1F21310",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -112,7 +112,7 @@
   {
     "SubKey": "B1F-012",
     "Sub": "SC1F21180",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -122,7 +122,7 @@
   {
     "SubKey": "B1F-013",
     "Sub": "SC1F25990",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -132,7 +132,7 @@
   {
     "SubKey": "B1F-014",
     "Sub": "SC1F20610",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -142,7 +142,7 @@
   {
     "SubKey": "B1F-015",
     "Sub": "SC1F22160",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -152,7 +152,7 @@
   {
     "SubKey": "B1F-016",
     "Sub": "SC1F21880",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -162,7 +162,7 @@
   {
     "SubKey": "B1F-017",
     "Sub": "SC1F21780",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -172,7 +172,7 @@
   {
     "SubKey": "B1F-018",
     "Sub": "SC1F25920",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -182,7 +182,7 @@
   {
     "SubKey": "B1F-019",
     "Sub": "누전_SC1F25920",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -192,7 +192,7 @@
   {
     "SubKey": "B1F-020",
     "Sub": "SC1F26500",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -202,7 +202,7 @@
   {
     "SubKey": "B1F-021",
     "Sub": "누전_SC1F28070",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -212,7 +212,7 @@
   {
     "SubKey": "B1F-022",
     "Sub": "SC1F28070",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -222,7 +222,7 @@
   {
     "SubKey": "B1F-023",
     "Sub": "SC1F20440",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -232,7 +232,7 @@
   {
     "SubKey": "B1F-024",
     "Sub": "SC1F22690A",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -242,7 +242,7 @@
   {
     "SubKey": "B1F-025",
     "Sub": "SC1F22590",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -252,7 +252,7 @@
   {
     "SubKey": "B1F-026",
     "Sub": "SC1F26410",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -262,7 +262,7 @@
   {
     "SubKey": "B1F-027",
     "Sub": "SC1F23350A",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -272,7 +272,7 @@
   {
     "SubKey": "B1F-028",
     "Sub": "SC1F23270",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -282,7 +282,7 @@
   {
     "SubKey": "B1F-029",
     "Sub": "SC1F20280",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -292,7 +292,7 @@
   {
     "SubKey": "B1F-030",
     "Sub": "SC1F29000",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -302,7 +302,7 @@
   {
     "SubKey": "B1F-031",
     "Sub": "누전_SC1F28110",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -312,7 +312,7 @@
   {
     "SubKey": "B1F-032",
     "Sub": "SC1F28110",
-    "floor": "B1F-G",
+    "floor": "B1F",
     "x": 0,
     "y": 0,
     "aliases": [
@@ -480,10 +480,15 @@ window.Inv = [
 ];
 
 window.FLOORS = {
-  "B1F": "floors/B1F.png",
-  "B1M": "floors/B1M.png",
-  "2FM": "floors/2FM.png",
-  "3FM": "floors/3FM.png",
-  "4F":  "floors/4F.png"
+  B1F: "floors/B1F.png",
+  B1M: "floors/B1M.png",
+
+  // 아래 5개 층은 동일 이미지(통합 도면)로 매핑
+  B2F: "floors/B2F.png",
+  B2M: "floors/B2F.png",
+  B3F: "floors/B2F.png",
+  B3M: "floors/B2F.png",
+  B4F: "floors/B2F.png",
 };
+
 
