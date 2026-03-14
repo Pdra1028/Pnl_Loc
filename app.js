@@ -144,25 +144,6 @@ function fillPickKeySelect() {
   if (!pickKeySelect) return;
   if (!IDX) buildIndex();
 
-  const items = IDX.subList
-    .slice()
-    .sort((a,b) => a.floor.localeCompare(b.floor) || a.SubKey.localeCompare(b.SubKey));
-
-  pickKeySelect.innerHTML = [
-    `<option value="">(SubKey 선택)</option>`,
-    ...items.map(p => {
-      const label = `[${escapeHtml(p.floor)}] ${escapeHtml(p.SubKey)} | ${escapeHtml(p.name || "")}`;
-      return `<option value="${escapeHtml(p.SubKey)}">${label}</option>`;
-    })
-  ].join("");
-
-  if (pickSelectedKey) pickKeySelect.value = pickSelectedKey;
-}
-
-function fillPickKeySelect() {
-  if (!pickKeySelect) return;
-  if (!IDX) buildIndex();
-
   // SubKey 목록: Sub 데이터 기반
   const items = IDX.subList
     .slice()
@@ -670,14 +651,22 @@ viewport.addEventListener("touchend", (e) => {
 }, { passive: true });
 
 /* ===== init ===== */
+let __inited = false;
+
 function init() {
+  // ✅ 중복 init 방지 (새로고침/중복 스크립트 로드/핫리로드 대비)
+  if (__inited) return;
+  __inited = true;
+
   if (!IDX) buildIndex();
 
+  // 층 목록 구성
   const floors = uniqueFloorsFromData();
   floorSelect.innerHTML = floors
     .map(f => `<option value="${escapeHtml(f)}">${escapeHtml(f)}</option>`)
     .join("");
 
+  // 첫 층 선택
   const floorKeys = Object.keys(window.FLOORS || {});
   const firstFloor = floorKeys[0] || floors[0];
 
@@ -686,52 +675,59 @@ function init() {
     setFloor(firstFloor);
   }
 
+  // 검색/층 변경
   const doSearch = () => renderResults(filterPanels(search.value));
   search.addEventListener("input", doSearch);
 
   floorSelect.addEventListener("change", () => {
     setFloor(floorSelect.value);
-    renderResults(filterPanels(search.value));
+    doSearch();
   });
 
-  renderResults(filterPanels(""));
+  // 드롭다운 채우기 (SubKey 목록)
+  fillPickKeySelect();
 
-  if (btnResultsToggle) btnResultsToggle.textContent = "결과 접기";
-  updateFloorUX();
-}
+  // SubKey 선택 변경: 층 자동 이동 + (좌표 있으면) 이동
+  if (pickKeySelect) {
+    pickKeySelect.addEventListener("change", () => {
+      pickSelectedKey = pickKeySelect.value || "";
+      if (!pickSelectedKey) return;
 
-if (pickKeySelect) {
-  pickKeySelect.addEventListener("change", () => {
-    pickSelectedKey = pickKeySelect.value || "";
+      if (!IDX) buildIndex();
+      const p = IDX.subByKey.get(pickSelectedKey);
+      if (!p) return;
 
-    if (!pickSelectedKey) return;
+      if (p.floor && p.floor !== currentFloor) setFloor(p.floor);
 
-    if (!IDX) buildIndex();
-    const p = IDX.subByKey.get(pickSelectedKey);
-    if (!p) return;
+      if (typeof p.x === "number" && typeof p.y === "number" && (p.x !== 0 || p.y !== 0)) {
+        goToPanel(p);
+      } else {
+        showToast(`선택됨: ${p.SubKey} / ${p.name}\n이제 도면을 탭하면 좌표가 저장됩니다.`, 2200);
+      }
+    });
+  }
 
-    // 선택한 SubKey의 층으로 자동 이동
-    if (p.floor && p.floor !== currentFloor) {
-      setFloor(p.floor);
-    }
+  // "다음" 버튼
+  if (btnPickNext) {
+    btnPickNext.onclick = () => {
+      if (!pickKeySelect) return;
 
-    // 좌표가 이미 있으면 그 위치로 표시(0,0은 미매핑일 수도 있으니 조건은 보수적으로)
-    if (typeof p.x === "number" && typeof p.y === "number" && (p.x !== 0 || p.y !== 0)) {
-      goToPanel(p);
-    } else {
-      showToast(`선택됨: ${p.SubKey} / ${p.name}\n이제 도면을 탭하면 좌표가 저장됩니다.`, 2200);
-    }
-  });
-}
+      // 0번은 "(SubKey 선택)"이므로, 비어있으면 1번부터 시작
+      let idx = pickKeySelect.selectedIndex;
+      if (idx <= 0) idx = 1;
 
-  // ✅ 미니맵 드래그 이동(마우스/터치)
+      const next = Math.min(pickKeySelect.options.length - 1, idx + 1);
+      pickKeySelect.selectedIndex = next;
+      pickKeySelect.dispatchEvent(new Event("change"));
+    };
+  }
+
+  // 미니맵 드래그 이벤트
   if (minimap) {
     minimap.style.cursor = "grab";
     restoreMinimapPos();
 
-    // 마우스 드래그
     minimap.addEventListener("mousedown", (e) => {
-      // 클릭으로 지도 스크롤/선택 같은 동작이 있다면 방지
       e.preventDefault();
       startMinimapDrag(e.clientX, e.clientY);
     });
@@ -739,7 +735,6 @@ if (pickKeySelect) {
     window.addEventListener("mousemove", (e) => moveMinimapDrag(e.clientX, e.clientY));
     window.addEventListener("mouseup", () => endMinimapDrag());
 
-    // 터치 드래그
     minimap.addEventListener("touchstart", (e) => {
       if (e.touches.length !== 1) return;
       const t = e.touches[0];
@@ -755,18 +750,19 @@ if (pickKeySelect) {
 
     window.addEventListener("touchend", () => endMinimapDrag(), { passive: true });
   }
-  
-if (btnPickNext) {
-  btnPickNext.onclick = () => {
-    if (!pickKeySelect) return;
-    const idx = pickKeySelect.selectedIndex;
-    if (idx < 0) return;
-    const next = Math.min(pickKeySelect.options.length - 1, idx + 1);
-    pickKeySelect.selectedIndex = next;
+
+  // 초기 렌더
+  renderResults(filterPanels(""));
+  if (btnResultsToggle) btnResultsToggle.textContent = "결과 접기";
+  updateFloorUX();
+
+  // ✅ 추가 권장: 첫 SubKey 자동 선택 + change 실행
+  if (pickKeySelect && pickKeySelect.options.length > 1 && !pickKeySelect.value) {
+    pickKeySelect.selectedIndex = 1;
     pickKeySelect.dispatchEvent(new Event("change"));
-  };
+  }
 }
 
-fillPickKeySelect();
-
-init();
+window.addEventListener("DOMContentLoaded", () => {
+  init();
+});
